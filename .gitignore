@@ -4,3 +4,6 @@
 
 # python cache file
 __pycache__/
+
+# jupyter
+.ipynb_checkpoints
