@@ -12,7 +12,8 @@
 - `heart.csv`
 - `train.csv`
 - `test.csv`
-  具体的话在[`projet2-3i005.ipynb`](./projet2-3i005.ipynb)里有详细说明。
+
+具体的话在[`projet2-3i005.ipynb`](./projet2-3i005.ipynb)里有详细说明。
 
 最后，有一个[`utils.py`](./utils.py)文件，里面有一些函数供我们使用：
 
