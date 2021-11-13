@@ -20,6 +20,35 @@ def getPrior(data):
           'min5pourcent': mu - amplitude, 
           'max5pourcent': mu + amplitude}
 
+def P2D_general(df, key_numer, key_denom):
+  if df is None:
+    return
+  probs = {} # the result to return
+  denom = {}
+  for t in df.itertuples():
+    dic=t._asdict() # recover the data frame
+    # get denom value
+    i = dic[key_denom] 
+    if i not in probs.keys():
+      probs[i] = {} # create the under-dictionary if the key does not exixte
+    # get the value of the Numerator field
+    j = dic[key_numer]
+    # count the value of attr
+    probs[i][j] = probs[i][j]+1 if j in probs[i].keys() else 1
+    # count the value of denom
+    denom[i] = denom[i]+1 if i in denom.keys() else 1
+  # claculate the probabilities
+  for i in probs.keys():
+    for j in probs[i].keys():
+      probs[i][j] /= denom[i]
+  return probs
+
+def P2D_l(df,attr):
+  return P2D_general(df, attr, 'target')
+  
+def P2D_p(df,attr):
+  return P2D_general(df, 'target', attr)
+
 
 class APrioriClassifier(AbstractClassifier):
 
