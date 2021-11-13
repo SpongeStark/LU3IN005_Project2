@@ -53,33 +53,64 @@ def P2D_p(df,attr):
 class APrioriClassifier(AbstractClassifier):
 
   def estimClass(self, data):
-    if data is not None:
-      return getPrior(data)
-  
+    if data is None:
+      return
+    prior = getPrior(data)
+    if prior['estimation'] > 0.5:
+      return 1
+    return 0
+    
   def statsOnDF(self, df):
     if df is None:
       return
-    prior = getPrior(df)
-    predict = [1 if random.random() < prior['estimation'] else 0 for i in range(len(df))]
     VP = VN = FP = FN = 0
-    diff = sum(df['target']) - sum(predict)
-    VP = min(sum(df['target']), sum(predict))
-    # for t in df.itertuples():
-    #   dic=t._asdict()
-    #   predict = 1 if random.random() < prior['estimation'] else 0
-    #   if dic['target'] == 1:
-    #     if predict == 1:
-    #       VP += 1  # target=1 && predict=1
-    #     else:
-    #       FN += 1  # target=1 && predict=0
-    #   else:
-    #     if predict == 1:
-    #       FP += 1  # target=0 && predict=1
-    #     else:
-    #       VN += 1  # target=0 && predict=0
+    for t in df.itertuples():
+      dic=t._asdict()
+      if self.__class__.__name__ == 'APrioriClassifier':
+        predict = self.estimClass(df)
+      else:
+        predict = self.estimClass(dic)
+      if dic['target'] == 1:
+        if predict == 1:
+          VP += 1  # target=1 && predict=1
+        else:
+          FN += 1  # target=1 && predict=0
+      else:
+        if predict == 1:
+          FP += 1  # target=0 && predict=1
+        else:
+          VN += 1  # target=0 && predict=0
     return {'VP': VP, 'VN': VN, 'FP': FP, 'FN': FN, 
-            'Précision': VP / (VP + VN),
+            'Précision': VP / (VP + FP),
             'Rappel': VP / (VP + FN)}
         
-      
+class ML2DClassifier(APrioriClassifier):
+
+  attr = ''
+  probs = {}
+
+  def __init__(self, df, attr):
+    self.attr = attr
+    self.probs = P2D_l(df,attr)
+
+  def estimClass(self,one_line):
+    j = one_line[self.attr]
+    if self.probs[0][j] > self.probs[1][j]:
+      return 0
+    return 1
+
+class MAP2DClassifier(APrioriClassifier):
+
+  attr = ''
+  probs = {}
+
+  def __init__(self, df, attr):
+    self.attr = attr
+    self.probs = P2D_p(df,attr)
+
+  def estimClass(self,one_line):
+    i = one_line[self.attr]
+    if self.probs[i][0] > self.probs[i][1]:
+      return 0
+    return 1
     
