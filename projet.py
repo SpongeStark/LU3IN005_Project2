@@ -60,7 +60,7 @@ class APrioriClassifier(AbstractClassifier):
 
 # Question 3
 
-def P2D_general(df, key_numer, key_denom):
+def P2D_general_old(df, key_numer, key_denom):
   if df is None:
     return
   probs = {} # the result to return
@@ -82,6 +82,41 @@ def P2D_general(df, key_numer, key_denom):
     for j in probs[i].keys():
       probs[i][j] /= denom[i]
   return probs
+
+def P2D_general(df, A, B):
+  """Calculate P(A|B) where `A` and `B` are the champs of data frame `df`"""
+  if df is None:
+    return
+  probs = {} # the result to return
+  values_A = []
+  values_B = []
+  numer = {}
+  denom = {}
+  for t in df.itertuples():
+    dic=t._asdict() # recover the data frame
+    # get denom value
+    value_B = dic[B]
+    if value_B not in values_B:
+      values_B.append(value_B)
+      denom[value_B] = 1
+      numer[value_B] = {}
+    else:
+      denom[value_B] += 1
+    # get the numer value
+    value_A = dic[A]
+    if value_A not in values_A:
+      values_A.append(value_A)
+    if value_A not in numer[value_B].keys():
+      numer[value_B][value_A] = 1
+    else:
+      numer[value_B][value_A] += 1
+  # claculate the probabilities
+  for i in values_B:
+    probs[i] = {}
+    for j in values_A:
+      probs[i][j] = 0 if numer[i][j]==0 else numer[i][j] / denom[i]
+  return probs
+
 
 def P2D_l(df,attr):
   return P2D_general(df, attr, 'target')
@@ -210,6 +245,7 @@ def nbParamsNaiveBayes(data,root,keys=None):
     # output
     print_memory_size(len(keys),size)
 
+# 到此处！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
 class MLNaiveBayesClassifier(APrioriClassifier):
 
   probs = {}
