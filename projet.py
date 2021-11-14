@@ -1,4 +1,5 @@
 import math
+from typing import ValuesView
 
 from utils import *
 
@@ -60,7 +61,8 @@ class APrioriClassifier(AbstractClassifier):
 
 # Question 3
 
-def P2D_general_old(df, key_numer, key_denom):
+def P2D_general_old(df, A, B):
+  """Calculate P(A|B) where `A` and `B` are the champs of data frame `df`"""
   if df is None:
     return
   probs = {} # the result to return
@@ -68,11 +70,11 @@ def P2D_general_old(df, key_numer, key_denom):
   for t in df.itertuples():
     dic=t._asdict() # recover the data frame
     # get denom value
-    i = dic[key_denom] 
+    i = dic[B] 
     if i not in probs.keys():
       probs[i] = {} # create the under-dictionary if the key does not exixte
     # get the value of the Numerator field
-    j = dic[key_numer]
+    j = dic[A]
     # count the value of attr
     probs[i][j] = probs[i][j]+1 if j in probs[i].keys() else 1
     # count the value of denom
@@ -84,7 +86,7 @@ def P2D_general_old(df, key_numer, key_denom):
   return probs
 
 def P2D_general(df, A, B):
-  """Calculate P(A|B) where `A` and `B` are the champs of data frame `df`"""
+  """Calculate P(A|B) where `A` and `B` are the champs of data frame `df`. And fill with 0 if P(A|B) does not exist"""
   if df is None:
     return
   probs = {} # the result to return
@@ -95,26 +97,21 @@ def P2D_general(df, A, B):
   for t in df.itertuples():
     dic=t._asdict() # recover the data frame
     # get denom value
-    value_B = dic[B]
-    if value_B not in values_B:
-      values_B.append(value_B)
-      denom[value_B] = 1
-      numer[value_B] = {}
-    else:
-      denom[value_B] += 1
+    i = dic[B]
+    if i not in values_B:
+      values_B.append(i)
+      numer[i] = {}
+    denom[i] = denom[i]+1 if i in denom.keys() else 1
     # get the numer value
-    value_A = dic[A]
-    if value_A not in values_A:
-      values_A.append(value_A)
-    if value_A not in numer[value_B].keys():
-      numer[value_B][value_A] = 1
-    else:
-      numer[value_B][value_A] += 1
+    j = dic[A]
+    if j not in values_A:
+      values_A.append(j)
+    numer[i][j] = numer[i][j]+1 if j in numer[i].keys() else 1
   # claculate the probabilities
   for i in values_B:
     probs[i] = {}
     for j in values_A:
-      probs[i][j] = 0 if numer[i][j]==0 else numer[i][j] / denom[i]
+      probs[i][j] = numer[i][j] / denom[i] if j in  numer[i].keys() else 0
   return probs
 
 
@@ -246,9 +243,17 @@ def nbParamsNaiveBayes(data,root,keys=None):
     print_memory_size(len(keys),size)
 
 # 到此处！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
-class MLNaiveBayesClassifier(APrioriClassifier):
-
+class NaiveBayesClassifier(APrioriClassifier):
+  """To define the function `getProb`"""
   probs = {}
+
+  def getProb(self,champ, a, b):
+    """get P(A|B), or 0 if P(A|B) does not exist"""
+    if b in self.probs[champ].keys() and a in self.probs[champ][b].keys():
+        return self.probs[champ][b][a]
+    return 0
+
+class MLNaiveBayesClassifier(NaiveBayesClassifier):
 
   def __init__(self, df):
     for key in df.keys():
@@ -260,10 +265,8 @@ class MLNaiveBayesClassifier(APrioriClassifier):
     for key,value in one_line.items():
       if key != 'target':
         for i in range(2):
-          if value in self.probs[key][i].keys():
-            result[i] *= self.probs[key][i][value]
-          else:
-            result[i] = 0
+          # result[i] *= self.probs[key][i][value]
+          result[i] *= self.getProb(key, value, i)
     return result
   
   def estimLogProbas(self, one_line):
@@ -272,7 +275,8 @@ class MLNaiveBayesClassifier(APrioriClassifier):
     for key,value in one_line.items():
       if key != 'target':
         for i in range(2):
-          if value in self.probs[key][i].keys():
+          proba = self.getProb(key, value, i)
+          if proba != 0:
             result[i] += math.log(self.probs[key][i][value])
           else:
             result[i] = -math.inf
@@ -284,9 +288,8 @@ class MLNaiveBayesClassifier(APrioriClassifier):
       return 0
     return 1
 
-class MAPNaiveBayesClassifier(APrioriClassifier):
+class MAPNaiveBayesClassifier(NaiveBayesClassifier):
 
-  probs = {}
   mu = 0
 
   def __init__(self, df):
@@ -296,29 +299,16 @@ class MAPNaiveBayesClassifier(APrioriClassifier):
     self.mu = getPrior(df)['estimation']
 
   def estimProbas(self, one_line):
-    result = {0:1-self.mu, 1:self.mu}
-    for key,value in one_line.items():
-      if key != 'target':
-        if value in self.probs[key].keys():
-          for i in range(2):
-            if i in self.probs[key][value].keys():
-              result[i] *= self.probs[key][value][i]
-            else:
-              result[i] = 0
-        else:
-          result[i] = 0
-    return result
-  
-  def estimLogProbas(self, one_line):
-    """Beacuse the likelihood is too small, so we use the log value to claculate the likelihood"""
-    result = {0:0, 1:0}
-    for key,value in one_line.items():
-      if key != 'target':
-        for i in range(2):
-          if value in self.probs[key][i].keys():
-            result[i] += math.log(self.probs[key][i][value])
-          else:
-            result[i] = -math.inf
+    result = {0:1, 1:1}
+    for i in range(2):
+      for key,value in one_line.items():
+        if key != 'target':
+          # result[i] *= self.probs[key][value][i]
+          result[i] *= self.getProb(key, i, value)
+    denom = result[0]*(1-self.mu) + result[1]*self.mu
+    for i in range(2):
+      P_target = self.mu if i==1 else 1-self.mu
+      result[i] = 0 if result[i] == 0 else result[i]*P_target/denom
     return result
 
   def estimClass(self,one_line):
@@ -326,3 +316,6 @@ class MAPNaiveBayesClassifier(APrioriClassifier):
     if logProbs[0] > logProbs[1]:
       return 0
     return 1
+
+
+# Question 6
