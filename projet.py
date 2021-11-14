@@ -1,6 +1,5 @@
 import math
 
-from pyparsing import Empty
 from utils import *
 
 # Question 1
@@ -43,6 +42,7 @@ class APrioriClassifier(AbstractClassifier):
       if self.__class__.__name__ == 'APrioriClassifier':
         predict = self.estimClass(df)
       else:
+        del dic['Index']
         predict = self.estimClass(dic)
       if dic['target'] == 1:
         if predict == 1:
@@ -121,24 +121,20 @@ class MAP2DClassifier(APrioriClassifier):
     return 1
 
 # Question 4
-def nbParams(data, keys=[]):
+def nbParams(data, keys=None):
   # default of keys is all the keys of data
-  if keys:
+  if keys is not None:
     data = data[keys]
   # count the number of different values of each sample of data
   count_value = count_samples_spaces(data)
   size = 1
-  # calculate all the possibilities (number of float)
+  # calculate all the probabilities (number of float)
   for value in count_value.values():
     size *= value
   # 8 Byte/float
   size *= 8 
   # output: print in terminal
-  output = "{} variable(s) : {} octets".format(len(count_value), size)
-  if size < 1024:
-    print(output)
-  else:
-    print(output + " = " + size_format_str(size))
+  print_memory_size(len(data.keys()),size)
 
 def count_samples_spaces(data):
   """Calculate the sizes of sample sapce of each sample in data"""
@@ -160,22 +156,137 @@ def size_format_str(size):
     size //= 1024
   return output.strip()
 
-def nbParamsIndep(data, keys=[]):
-  # get only what we want in data
-  if keys:
-    data = data[keys]
-  # get the sizes of sample space of all the sample
-  sizes_sample_space = count_samples_spaces(data)
-  size = 0
-  # calculate all the possibilities (number of float)
-  for value in sizes_sample_space.values():
-    size += value
-  # 8 Byte/float
-  size *= 8
-  # output
-  output = "{} variable(s) : {} octets".format(len(data), size)
+def print_memory_size(nb_var, size):
+  output = "{} variable(s) : {} octets".format(nb_var, size)
   if size < 1024:
     print(output)
   else:
     print(output + " = " + size_format_str(size))
 
+def nbParamsIndep(data):
+  # get the sizes of sample space of all the sample
+  sizes_sample_space = count_samples_spaces(data)
+  size = 0
+  # calculate all the probabilities (number of float)
+  for value in sizes_sample_space.values():
+    size += value
+  # 8 Byte/float
+  size *= 8
+  # output
+  print_memory_size(len(data.keys()),size)
+
+
+# Question 5
+def drawNaiveBayes(data,root):
+  input_arg_str = ''
+  keys = list(data.keys())
+  keys.remove(root)
+  keys.reverse() # 这句话只是单纯为了和老师的输出显示顺序一样，但其实加不加都不重要
+  while len(keys) != 0:
+    input_arg_str += "{}->{}".format(root, keys.pop())
+    if len(keys) != 0:
+      input_arg_str += ";"
+  return drawGraph(input_arg_str)
+
+def nbParamsNaiveBayes(data,root,keys=None):
+  # get only what we want in data
+  if keys is None: keys = data.keys()
+  if len(keys)==0 : # keys = []
+    size = count_samples_spaces(data[[root]])[root] * 8
+    # output
+    print_memory_size(0,size)
+  else: 
+    data = data[keys]
+    # get the sizes of sample space of all the sample
+    sizes_sample_space = count_samples_spaces(data)
+    size = 0
+    # calculate all the probabilities (number of float)
+    for key, value in sizes_sample_space.items():
+      if key != root:
+        size += value
+    size *= sizes_sample_space[root]
+    size += sizes_sample_space[root]
+    size *= 8 # 8 Byte/float
+    # output
+    print_memory_size(len(keys),size)
+
+class MLNaiveBayesClassifier(APrioriClassifier):
+
+  probs = {}
+
+  def __init__(self, df):
+    for key in df.keys():
+      if key != 'target':
+        self.probs[key] = P2D_l(df,key)
+
+  def estimProbas(self, one_line):
+    result = {0:1, 1:1}
+    for key,value in one_line.items():
+      if key != 'target':
+        for i in range(2):
+          if value in self.probs[key][i].keys():
+            result[i] *= self.probs[key][i][value]
+          else:
+            result[i] = 0
+    return result
+  
+  def estimLogProbas(self, one_line):
+    """Beacuse the likelihood is too small, so we use the log value to claculate the likelihood"""
+    result = {0:0, 1:0}
+    for key,value in one_line.items():
+      if key != 'target':
+        for i in range(2):
+          if value in self.probs[key][i].keys():
+            result[i] += math.log(self.probs[key][i][value])
+          else:
+            result[i] = -math.inf
+    return result
+
+  def estimClass(self,one_line):
+    logProbs = self.estimLogProbas(one_line)
+    if logProbs[0] > logProbs[1]:
+      return 0
+    return 1
+
+class MAPNaiveBayesClassifier(APrioriClassifier):
+
+  probs = {}
+  mu = 0
+
+  def __init__(self, df):
+    for key in df.keys():
+      if key != 'target':
+        self.probs[key] = P2D_p(df,key)
+    self.mu = getPrior(df)['estimation']
+
+  def estimProbas(self, one_line):
+    result = {0:1-self.mu, 1:self.mu}
+    for key,value in one_line.items():
+      if key != 'target':
+        if value in self.probs[key].keys():
+          for i in range(2):
+            if i in self.probs[key][value].keys():
+              result[i] *= self.probs[key][value][i]
+            else:
+              result[i] = 0
+        else:
+          result[i] = 0
+    return result
+  
+  def estimLogProbas(self, one_line):
+    """Beacuse the likelihood is too small, so we use the log value to claculate the likelihood"""
+    result = {0:0, 1:0}
+    for key,value in one_line.items():
+      if key != 'target':
+        for i in range(2):
+          if value in self.probs[key][i].keys():
+            result[i] += math.log(self.probs[key][i][value])
+          else:
+            result[i] = -math.inf
+    return result
+
+  def estimClass(self,one_line):
+    logProbs = self.estimProbas(one_line)
+    if logProbs[0] > logProbs[1]:
+      return 0
+    return 1
