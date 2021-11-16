@@ -1,5 +1,7 @@
 import math
 from typing import ValuesView
+from scipy.stats import chi2_contingency
+from scipy.stats import chi2
 
 from utils import *
 
@@ -283,7 +285,7 @@ class MLNaiveBayesClassifier(NaiveBayesClassifier):
     return result
 
   def estimClass(self,one_line):
-    logProbs = self.estimLogProbas(one_line)
+    logProbs = self.estimProbas(one_line)
     if logProbs[0] > logProbs[1]:
       return 0
     return 1
@@ -319,3 +321,29 @@ class MAPNaiveBayesClassifier(NaiveBayesClassifier):
 
 
 # Question 6
+def isIndepFromTarget(df, attr, alpha):
+  #count
+  table = get_contingency_table(df, attr)
+  stat,p,dof,expected = chi2_contingency(table)
+  prob = 1-alpha # 选取95%置信度
+  critical = chi2.ppf(prob,dof)  # 计算临界阀值
+  return abs(stat)<critical
+
+def get_contingency_table(df, attr):
+  # count
+  values = []
+  numbers = {0:{},1:{}}
+  res = [[],[]]
+  for t in df.itertuples():
+    dic=t._asdict() # recover the data frame
+    i = dic['target']
+    j = dic[attr]
+    if j not in values:
+      values.append(j)
+    numbers[i][j] = numbers[i][j]+1 if j in numbers[i].keys() else 1
+  #to list
+  for key in numbers[0]:
+      res[0].append(numbers[0][key])
+      res[1].append(numbers[1][key] if key in numbers[1].keys() else 0)
+  # return result          
+  return res
