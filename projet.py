@@ -244,31 +244,31 @@ def nbParamsNaiveBayes(data,root,keys=None):
     # output
     print_memory_size(len(keys),size)
 
-# 到此处！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
-class NaiveBayesClassifier(APrioriClassifier):
-  """To define the function `getProb`"""
+
+class MLNaiveBayesClassifier(APrioriClassifier):
+
   probs = {}
 
-  def getProb(self,champ, a, b):
-    """get P(A|B), or 0 if P(A|B) does not exist"""
-    if b in self.probs[champ].keys() and a in self.probs[champ][b].keys():
-        return self.probs[champ][b][a]
-    return 0
-
-class MLNaiveBayesClassifier(NaiveBayesClassifier):
-
   def __init__(self, df):
+    self.probs = {}
     for key in df.keys():
       if key != 'target':
         self.probs[key] = P2D_l(df,key)
+  
+  def getProb(self,champ, a, b):
+    """get P(A|B), or 0 if P(A|B) does not exist"""
+    if champ in self.probs.keys():
+      if b in self.probs[champ].keys() and a in self.probs[champ][b].keys():
+        return self.probs[champ][b][a]
+      else:
+        return 0
+    else:
+      return 1
 
   def estimProbas(self, one_line):
-    result = {0:1, 1:1}
-    for key,value in one_line.items():
-      if key != 'target':
-        for i in range(2):
-          # result[i] *= self.probs[key][i][value]
-          result[i] *= self.getProb(key, value, i)
+    result = self.estimLogProbas(one_line)
+    for i in range(len(result)):
+      result[i] = math.exp(result[i])
     return result
   
   def estimLogProbas(self, one_line):
@@ -279,45 +279,48 @@ class MLNaiveBayesClassifier(NaiveBayesClassifier):
         for i in range(2):
           proba = self.getProb(key, value, i)
           if proba != 0:
-            result[i] += math.log(self.probs[key][i][value])
+            result[i] += math.log(proba)
           else:
             result[i] = -math.inf
     return result
 
   def estimClass(self,one_line):
-    logProbs = self.estimProbas(one_line)
-    if logProbs[0] > logProbs[1]:
+    logProbs = self.estimLogProbas(one_line)
+    if logProbs[0] >= logProbs[1]:
       return 0
     return 1
 
-class MAPNaiveBayesClassifier(NaiveBayesClassifier):
+class MAPNaiveBayesClassifier(MLNaiveBayesClassifier):
 
   mu = 0
 
   def __init__(self, df):
-    for key in df.keys():
-      if key != 'target':
-        self.probs[key] = P2D_p(df,key)
+    super().__init__(df)
     self.mu = getPrior(df)['estimation']
 
   def estimProbas(self, one_line):
-    result = {0:1, 1:1}
+    return super().estimProbas(one_line)
+  
+  def estimLogProbas(self, one_line):
+    # get \prod_i P(attr_i | target)
+    result =  super().estimLogProbas(one_line)
+    # calculate P(target) \cdot \prod_i P(attr_i | target)
+    result[0] += math.log(1-self.mu)
+    result[1] += math.log(self.mu)
+    # normalize
+    denom = self.get_log_sum(result.values())
     for i in range(2):
-      for key,value in one_line.items():
-        if key != 'target':
-          # result[i] *= self.probs[key][value][i]
-          result[i] *= self.getProb(key, i, value)
-    denom = result[0]*(1-self.mu) + result[1]*self.mu
-    for i in range(2):
-      P_target = self.mu if i==1 else 1-self.mu
-      result[i] = 0 if result[i] == 0 else result[i]*P_target/denom
+      if result[i] != -math.inf:
+        result[i] = result[i] - denom
     return result
-
-  def estimClass(self,one_line):
-    logProbs = self.estimProbas(one_line)
-    if logProbs[0] > logProbs[1]:
-      return 0
-    return 1
+  
+  def get_log_sum(self, log_probs):
+    """Calculate log(\sum P_i) by given log(P_i)"""
+    D = - max(log_probs)
+    result = 0
+    for item in log_probs:
+      result += math.exp(item + D)
+    return math.log(result) - D
 
 
 # Question 6
@@ -347,3 +350,33 @@ def get_contingency_table(df, attr):
       res[1].append(numbers[1][key] if key in numbers[1].keys() else 0)
   # return result          
   return res
+
+class ReducedMLNaiveBayesClassifier(MLNaiveBayesClassifier):
+
+  def __init__(self, df, alpha):
+    self.keys_of_indep = self.get_keys(df, alpha)
+    super().__init__(df[self.keys_of_indep])
+
+  
+  def get_keys(self, df, alpha):
+    keys_of_indep = []
+    for key in df.keys():
+      if key == 'target' or not isIndepFromTarget(df, key, alpha):
+        keys_of_indep.append(key)
+    return keys_of_indep
+  
+  def draw(self):
+    input_arg_str = ''
+    keys = self.keys_of_indep.copy()
+    for champ in keys:
+      if champ != "target":
+        input_arg_str += "{}->{};".format('target', champ)
+    # remove last ";"
+    input_arg_str = input_arg_str[:-1]
+    return drawGraph(input_arg_str)
+
+class ReducedMAPNaiveBayesClassifier(ReducedMLNaiveBayesClassifier, MAPNaiveBayesClassifier):
+  def __init__(self, df, alpha):
+    ReducedMLNaiveBayesClassifier.__init__(self, df, alpha)
+    MAPNaiveBayesClassifier.__init__(self, df[self.keys_of_indep])
+
