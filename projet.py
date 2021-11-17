@@ -5,7 +5,10 @@ import matplotlib.pyplot as plt
 
 from utils import *
 
-# Question 1
+# //////////////////////////////////////////////////////////////
+# Question 1 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
 def getPrior(data):
   """
   calculer la probabilité a priori de la classe 1, ainsi que l'intervalle de confiance à 95% pour l'estimation de cette probabilité.
@@ -24,9 +27,28 @@ def getPrior(data):
           'min5pourcent': mu - amplitude, 
           'max5pourcent': mu + amplitude}
 
-# Question 2
+# //////////////////////////////////////////////////////////////
+# Question 2 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 class APrioriClassifier(AbstractClassifier):
+
+  # for all the son classes
+  probs = {}
+
+  def getProb(self, champ, a, b):
+    """
+    get P(A=a|B=b), where one of A and B is `champ` and another is `target`  
+    return 0 if P(A=a|B=b) does not exist  
+    return 1 if `champ` does not exist
+    """
+    if champ in self.probs.keys():
+      if b in self.probs[champ].keys() and a in self.probs[champ][b].keys():
+        return self.probs[champ][b][a]
+      else:
+        return 0
+    else:
+      return 1
 
   def estimClass(self, data):
     if data is None:
@@ -39,14 +61,22 @@ class APrioriClassifier(AbstractClassifier):
   def statsOnDF(self, df):
     if df is None:
       return
+    # Initialization
     VP = VN = FP = FN = 0
+    # traverse the data frame
     for t in df.itertuples():
+      # take one line
       dic=t._asdict()
+      # check the class name
       if self.__class__.__name__ == 'APrioriClassifier':
+        # if in this class, we pass the whole data frame
         predict = self.estimClass(df)
       else:
+        # if is in his son class, we delete the column "Index"
         del dic['Index']
+        # and pass just one line
         predict = self.estimClass(dic)
+      # count
       if dic['target'] == 1:
         if predict == 1:
           VP += 1  # target=1 && predict=1
@@ -58,19 +88,22 @@ class APrioriClassifier(AbstractClassifier):
         else:
           VN += 1  # target=0 && predict=0
     return {'VP': VP, 'VN': VN, 'FP': FP, 'FN': FN, 
-            'Précision': VP / (VP + FP),
-            'Rappel': VP / (VP + FN)}
+            'Précision': 0 if VP==0 else VP / (VP + FP),
+            'Rappel': 0 if VP==0 else VP / (VP + FN)}
 
-# Question 3
+# //////////////////////////////////////////////////////////////
+# Question 3 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
-def P2D_general_old(df, A, B):
+def P2D(df, A, B):
   """Calculate P(A|B) where `A` and `B` are the champs of data frame `df`"""
   if df is None:
     return
   probs = {} # the result to return
   denom = {}
+  # traverse the data frame
   for t in df.itertuples():
-    dic=t._asdict() # recover the data frame
+    dic=t._asdict()
     # get denom value
     i = dic[B] 
     if i not in probs.keys():
@@ -87,6 +120,7 @@ def P2D_general_old(df, A, B):
       probs[i][j] /= denom[i]
   return probs
 
+'''
 def P2D_general(df, A, B):
   """Calculate P(A|B) where `A` and `B` are the champs of data frame `df`. And fill with 0 if P(A|B) does not exist"""
   if df is None:
@@ -115,46 +149,50 @@ def P2D_general(df, A, B):
     for j in values_A:
       probs[i][j] = numer[i][j] / denom[i] if j in  numer[i].keys() else 0
   return probs
-
+'''
 
 def P2D_l(df,attr):
-  return P2D_general(df, attr, 'target')
+  return P2D(df, attr, 'target')
   
 def P2D_p(df,attr):
-  return P2D_general(df, 'target', attr)
-
+  return P2D(df, 'target', attr)
 
 class ML2DClassifier(APrioriClassifier):
 
   attr = ''
-  probs = {}
+  # probs = {}
 
   def __init__(self, df, attr):
     self.attr = attr
-    self.probs = P2D_l(df,attr)
+    self.probs[attr] = P2D_l(df,attr)
 
   def estimClass(self,one_line):
     j = one_line[self.attr]
-    if self.probs[0][j] > self.probs[1][j]:
+    # if self.probs[0][j] > self.probs[1][j]:
+    if self.getProb(self.attr, j,0) > self.getProb(self.attr, j,1):
       return 0
     return 1
 
 class MAP2DClassifier(APrioriClassifier):
 
   attr = ''
-  probs = {}
+  # probs = {}
 
   def __init__(self, df, attr):
     self.attr = attr
-    self.probs = P2D_p(df,attr)
+    self.probs[attr] = P2D_p(df,attr)
 
   def estimClass(self,one_line):
     i = one_line[self.attr]
-    if self.probs[i][0] > self.probs[i][1]:
+    # if self.probs[i][0] > self.probs[i][1]:
+    if self.getProb(self.attr, 0, i) > self.getProb(self.attr, 1, i):
       return 0
     return 1
 
-# Question 4
+# //////////////////////////////////////////////////////////////
+# Question 4 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
 def nbParams(data, keys=None):
   # default of keys is all the keys of data
   if keys is not None:
@@ -210,7 +248,10 @@ def nbParamsIndep(data):
   print_memory_size(len(data.keys()),size)
 
 
-# Question 5
+# //////////////////////////////////////////////////////////////
+# Question 5 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
 def drawNaiveBayes(data,root):
   input_arg_str = ''
   keys = list(data.keys())
@@ -247,7 +288,7 @@ def nbParamsNaiveBayes(data,root,keys=None):
 
 class MLNaiveBayesClassifier(APrioriClassifier):
 
-  probs = {}
+  # probs = {}
 
   def __init__(self, df):
     self.probs = {}
@@ -255,15 +296,15 @@ class MLNaiveBayesClassifier(APrioriClassifier):
       if key != 'target':
         self.probs[key] = P2D_l(df,key)
   
-  def getProb(self,champ, a, b):
-    """get P(A|B), or 0 if P(A|B) does not exist"""
-    if champ in self.probs.keys():
-      if b in self.probs[champ].keys() and a in self.probs[champ][b].keys():
-        return self.probs[champ][b][a]
-      else:
-        return 0
-    else:
-      return 1
+  # def getProb(self,champ, a, b):
+  #   """get P(A=a|B=b), or 0 if P(A|B) does not exist"""
+  #   if champ in self.probs.keys():
+  #     if b in self.probs[champ].keys() and a in self.probs[champ][b].keys():
+  #       return self.probs[champ][b][a]
+  #     else:
+  #       return 0
+  #   else:
+  #     return 1
 
   def estimProbas(self, one_line):
     result = self.estimLogProbas(one_line)
@@ -323,9 +364,11 @@ class MAPNaiveBayesClassifier(MLNaiveBayesClassifier):
     return math.log(result) - D
 
 
-# Question 6
+# //////////////////////////////////////////////////////////////
+# Question 6 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
 def isIndepFromTarget(df, attr, alpha):
-  #count
   table = get_contingency_table(df, attr)
   stat,p,dof,expected = chi2_contingency(table)
   prob = 1-alpha # 选取95%置信度
@@ -357,7 +400,6 @@ class ReducedMLNaiveBayesClassifier(MLNaiveBayesClassifier):
     self.keys_of_indep = self.get_keys(df, alpha)
     super().__init__(df[self.keys_of_indep])
 
-  
   def get_keys(self, df, alpha):
     keys_of_indep = []
     for key in df.keys():
@@ -380,7 +422,10 @@ class ReducedMAPNaiveBayesClassifier(ReducedMLNaiveBayesClassifier, MAPNaiveBaye
     ReducedMLNaiveBayesClassifier.__init__(self, df, alpha)
     MAPNaiveBayesClassifier.__init__(self, df[self.keys_of_indep])
 
-# Question 7
+# //////////////////////////////////////////////////////////////
+# Question 7 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
 def mapClassifiers(dic,df):
   for index,classifier in dic.items():
     stats = classifier.statsOnDF(df)
@@ -389,3 +434,4 @@ def mapClassifiers(dic,df):
     plt.scatter(x, y, marker='x', color="red")
     plt.text(x, y,index)
   plt.show()
+
