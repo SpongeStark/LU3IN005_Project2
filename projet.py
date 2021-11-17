@@ -1,7 +1,7 @@
 import math
-from typing import ValuesView
 from scipy.stats import chi2_contingency
 from scipy.stats import chi2
+import matplotlib.pyplot as plt
 
 from utils import *
 
@@ -380,3 +380,12 @@ class ReducedMAPNaiveBayesClassifier(ReducedMLNaiveBayesClassifier, MAPNaiveBaye
     ReducedMLNaiveBayesClassifier.__init__(self, df, alpha)
     MAPNaiveBayesClassifier.__init__(self, df[self.keys_of_indep])
 
+# Question 7
+def mapClassifiers(dic,df):
+  for index,classifier in dic.items():
+    stats = classifier.statsOnDF(df)
+    x = stats['Précision']
+    y = stats['Rappel']
+    plt.scatter(x, y, marker='x', color="red")
+    plt.text(x, y,index)
+  plt.show()
