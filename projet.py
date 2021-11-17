@@ -33,8 +33,7 @@ def getPrior(data):
 
 class APrioriClassifier(AbstractClassifier):
 
-  # for all the son classes
-  probs = {}
+  probs = {} # for all the son classes
 
   def getProb(self, champ, a, b):
     """
@@ -95,6 +94,8 @@ class APrioriClassifier(AbstractClassifier):
 # Question 3 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
+# ==== Question 3.a ============================================
+
 def P2D(df, A, B):
   """Calculate P(A|B) where `A` and `B` are the champs of data frame `df`"""
   if df is None:
@@ -120,42 +121,13 @@ def P2D(df, A, B):
       probs[i][j] /= denom[i]
   return probs
 
-'''
-def P2D_general(df, A, B):
-  """Calculate P(A|B) where `A` and `B` are the champs of data frame `df`. And fill with 0 if P(A|B) does not exist"""
-  if df is None:
-    return
-  probs = {} # the result to return
-  values_A = []
-  values_B = []
-  numer = {}
-  denom = {}
-  for t in df.itertuples():
-    dic=t._asdict() # recover the data frame
-    # get denom value
-    i = dic[B]
-    if i not in values_B:
-      values_B.append(i)
-      numer[i] = {}
-    denom[i] = denom[i]+1 if i in denom.keys() else 1
-    # get the numer value
-    j = dic[A]
-    if j not in values_A:
-      values_A.append(j)
-    numer[i][j] = numer[i][j]+1 if j in numer[i].keys() else 1
-  # claculate the probabilities
-  for i in values_B:
-    probs[i] = {}
-    for j in values_A:
-      probs[i][j] = numer[i][j] / denom[i] if j in  numer[i].keys() else 0
-  return probs
-'''
-
 def P2D_l(df,attr):
   return P2D(df, attr, 'target')
   
 def P2D_p(df,attr):
   return P2D(df, 'target', attr)
+
+# ==== Question 3.b ============================================
 
 class ML2DClassifier(APrioriClassifier):
 
@@ -173,10 +145,11 @@ class ML2DClassifier(APrioriClassifier):
       return 0
     return 1
 
+# ==== Question 3.c ============================================
+
 class MAP2DClassifier(APrioriClassifier):
 
   attr = ''
-  # probs = {}
 
   def __init__(self, df, attr):
     self.attr = attr
@@ -193,20 +166,7 @@ class MAP2DClassifier(APrioriClassifier):
 # Question 4 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
-def nbParams(data, keys=None):
-  # default of keys is all the keys of data
-  if keys is not None:
-    data = data[keys]
-  # count the number of different values of each sample of data
-  count_value = count_samples_spaces(data)
-  size = 1
-  # calculate all the probabilities (number of float)
-  for value in count_value.values():
-    size *= value
-  # 8 Byte/float
-  size *= 8 
-  # output: print in terminal
-  print_memory_size(len(data.keys()),size)
+# ==== Utilities ===============================================
 
 def count_samples_spaces(data):
   """Calculate the sizes of sample sapce of each sample in data"""
@@ -235,6 +195,25 @@ def print_memory_size(nb_var, size):
   else:
     print(output + " = " + size_format_str(size))
 
+# ==== Question 4.1 ============================================
+
+def nbParams(data, keys=None):
+  # default of keys is all the keys of data
+  if keys is not None:
+    data = data[keys]
+  # count the number of different values of each sample of data
+  count_value = count_samples_spaces(data)
+  size = 1
+  # calculate all the probabilities (number of float)
+  for value in count_value.values():
+    size *= value
+  # 8 Byte/float
+  size *= 8 
+  # output: print in terminal
+  print_memory_size(len(data.keys()),size)
+
+# ==== Question 4.2 ============================================
+
 def nbParamsIndep(data):
   # get the sizes of sample space of all the sample
   sizes_sample_space = count_samples_spaces(data)
@@ -251,6 +230,8 @@ def nbParamsIndep(data):
 # //////////////////////////////////////////////////////////////
 # Question 5 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+# ==== Question 5.3 ============================================
 
 def drawNaiveBayes(data,root):
   input_arg_str = ''
@@ -285,26 +266,15 @@ def nbParamsNaiveBayes(data,root,keys=None):
     # output
     print_memory_size(len(keys),size)
 
+# ==== Question 5.4 ============================================
 
 class MLNaiveBayesClassifier(APrioriClassifier):
-
-  # probs = {}
 
   def __init__(self, df):
     self.probs = {}
     for key in df.keys():
       if key != 'target':
         self.probs[key] = P2D_l(df,key)
-  
-  # def getProb(self,champ, a, b):
-  #   """get P(A=a|B=b), or 0 if P(A|B) does not exist"""
-  #   if champ in self.probs.keys():
-  #     if b in self.probs[champ].keys() and a in self.probs[champ][b].keys():
-  #       return self.probs[champ][b][a]
-  #     else:
-  #       return 0
-  #   else:
-  #     return 1
 
   def estimProbas(self, one_line):
     result = self.estimLogProbas(one_line)
@@ -425,6 +395,8 @@ class ReducedMAPNaiveBayesClassifier(ReducedMLNaiveBayesClassifier, MAPNaiveBaye
 # //////////////////////////////////////////////////////////////
 # Question 7 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+# ==== Question 7.2 ============================================
 
 def mapClassifiers(dic,df):
   for index,classifier in dic.items():
