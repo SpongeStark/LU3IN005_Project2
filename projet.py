@@ -351,7 +351,7 @@ def get_contingency_table(df, attr):
   numbers = {0:{},1:{}}
   res = [[],[]]
   for t in df.itertuples():
-    dic=t._asdict() # recover the data frame
+    dic=t._asdict() # traverse the data frame
     i = dic['target']
     j = dic[attr]
     if j not in values:
@@ -407,3 +407,93 @@ def mapClassifiers(dic,df):
     plt.text(x, y,index)
   plt.show()
 
+# //////////////////////////////////////////////////////////////
+# Question 8 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+def get_table_dim2(df, attr1, attr2):
+  data = df[[attr1, attr2]]
+  res = {'sum':{'sum':0}}
+  for t in data.itertuples():
+    dic=t._asdict() # traverse the data frame
+    i = dic[attr1]
+    j = dic[attr2]
+    if i not in res.keys():
+      res[i] = {}
+      res[i]['sum'] = 0
+    if j not in res[i].keys():
+      res[i][j] = 0
+    # count
+    res[i][j] += 1
+    # calculate the sum
+    res[i]['sum'] += 1
+    res['sum'][j] = res['sum'][j]+1 if j in res['sum'].keys() else 1
+    res['sum']['sum'] += 1
+  return res
+
+def get_table_dim3(df, attr1, attr2, attr3):
+  data = df[[attr1, attr2, attr3]]
+  res = {'sum':{'sum':{'sum':0}}}
+  for t in data.itertuples():
+    dic=t._asdict() # traverse the data frame
+    i = dic[attr1]
+    j = dic[attr2]
+    k = dic[attr3]
+    # for i
+    if i not in res.keys():
+      res[i] = {}
+      res[i]['sum'] = {}
+    # for j
+    if j not in res[i].keys():
+      res[i][j] = {}
+      res[i][j]['sum'] = 0
+    if j not in res['sum'].keys():
+      res['sum'][j] = {}
+    # for k
+    if k not in res[i][j].keys():
+      res[i][j][k] = 0
+    if k not in res[i]['sum'].keys():
+      res[i]['sum'][k] = 0
+    if k not in res['sum'][j].keys():
+      res['sum'][j][k] = 0
+    if k not in res['sum']['sum'].keys():
+      res['sum']['sum'][k] = 0
+    # count
+    res[i][j][k] += 1
+    # calculate the sum
+    res[i][j]['sum'] += 1
+    res[i]['sum'][k] += 1
+    res['sum'][j][k] += 1
+    res['sum']['sum'][k] += 1
+    res['sum']['sum']['sum'] += 1
+  return res
+
+# ==== Question 8.1 ============================================
+
+def MutualInformation(df,x,y):
+  res = 0
+  table = get_table_dim2(df, x, y)
+  for i, value in table.items():
+    if i == 'sum': continue
+    for j in value.keys():
+      if j == 'sum': continue
+      p_xy = table[i][j] / table['sum']['sum']
+      numer = table[i][j] * table['sum']['sum']
+      denom = table[i]['sum'] * table['sum'][j]
+      res += p_xy * math.log(numer / denom, 2)
+  return res
+
+def ConditionalMutualInformation(df,x,y,z):
+  res = 0
+  table = get_table_dim3(df, x, y, z)
+  for i, values in table.items():
+    if i == 'sum': continue
+    for j, value in values.items():
+      if j == 'sum': continue
+      for k in value.keys():
+        if k == 'sum': continue
+        p_xyz = table[i][j][k] / table['sum']['sum']['sum']
+        numer = table['sum']['sum'][k] * table[i][j][k]
+        denom = table[i]['sum'][k] * table['sum'][j][k]
+        res += p_xyz * math.log(numer/denom, 2)
+  return res
