@@ -139,7 +139,6 @@ def P2D_p(df, attr):
 class ML2DClassifier(APrioriClassifier):
 
     attr = ''
-    # probs = {}
 
     def __init__(self, df, attr):
         self.attr = attr
@@ -582,3 +581,23 @@ def Kruskal(df, G):
             res_G[i, j] = weight
             res_G[j, i] = weight
     return get_edges(keys, res_G)
+
+# ==== Question 8.4 ============================================
+
+
+def ConnexSets(list_arcs):
+    res = []
+    for i,j,weight in list_arcs:
+        flag = True
+        for k in range(len(res)):
+            if flag and ((i in res[k]) or (j in res[k])):
+                res[k].update({i,j})
+                flag = False
+        if flag:
+            res.append({i,j})
+    return res
+
+# ==== Question 8.5 ============================================
+
+class MAPTANClassifier():
+    pass         
